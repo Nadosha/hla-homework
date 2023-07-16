@@ -32,7 +32,7 @@ services:
     build:
       context: .
     ports:
-      - 3000:3000   
+      - 3000:3005   
     depends_on:
       - backend 
 
@@ -49,35 +49,46 @@ services:
     platform: linux/arm64
     container_name: telegraf
     image: telegraf:latest
-    network_mode: "host"
     volumes:
       -  ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
       - /var/run/docker.sock:/var/run/docker.sock
     restart: always
+    network_mode: "host"
 
   influxdb:
     platform: linux/arm64
     image: influxdb:latest
     env_file: configuration.env
     ports:
-      - '127.0.0.1:8086:8086'
+      - '8086:8086'
     volumes:
       - ./:/imports
       - influxdb_data:/var/lib/influxdb
+
 
   grafana:
     image: grafana/grafana:8.0.2
     depends_on:
       - influxdb
     env_file: configuration.env
-    links:
-      - influxdb
     ports:
-      - '127.0.0.1:3030:3030'
+      - '3034:3034'
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning/:/etc/grafana/provisioning/
       - ./grafana/dashboards/:/var/lib/grafana/dashboards/
+    network_mode: "host"
+
+  web:
+    image: nginx
+    volumes:
+      - ./templates:/etc/nginx/templates
+    ports:
+      - "8080:80"
+    environment:
+      - NGINX_HOST=foobar.com
+      - NGINX_PORT=80
+    network_mode: "host"
 
 volumes:
   mongodata: {}
