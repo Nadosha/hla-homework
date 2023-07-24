@@ -1,7 +1,7 @@
 version: '3.9'
 services:
   backend:
-    container_name: backend
+    container_name: server
     image: andriinadosha/nestjs
     working_dir: /app/packages/server
     command: yarn start:dev
@@ -10,31 +10,31 @@ services:
         source: .
         target: /app
     build:
-      context: .
+      context: ./packages/server
     ports:
       - 3001:3001
     environment:
       MONGODB_URL: mongodb://mongo:27017/blindspot
-      # Very important thing inside the Docker there are no localhost, only names of service!
     depends_on:
       - mongo
+    network_mode: "host"
       
   frontend:
-    container_name: frontend
+    container_name: client
     image: andriinadosha/nextjs
     working_dir: /app/packages/client
     command: npm run dev
     volumes:
       - type: bind
-      # [INFO] We utilise the "bind" volume because when we update the code, the container reflects our changes.
         source: .
         target: /app
     build:
-      context: .
+      context: ./packages/client
     ports:
       - 3000:3000   
     depends_on:
-      - backend 
+      - backend
+    network_mode: "host"
 
   mongo:
     image: mongo
@@ -44,43 +44,18 @@ services:
         target: /data/db
     ports:
       - 27017:27017
-  
-  telegraf:
-    platform: linux/arm64
-    container_name: telegraf
-    image: telegraf:latest
     network_mode: "host"
-    volumes:
-      -  ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf
-      - /var/run/docker.sock:/var/run/docker.sock
-    restart: always
 
-  influxdb:
-    platform: linux/arm64
-    image: influxdb:latest
-    env_file: configuration.env
+  nginx:
+    image: nginx
+    container_name: nginx_cache
     ports:
-      - '127.0.0.1:8086:8086'
+      - "80:80"
     volumes:
-      - ./:/imports
-      - influxdb_data:/var/lib/influxdb
-
-  grafana:
-    image: grafana/grafana:8.0.2
-    depends_on:
-      - influxdb
-    env_file: configuration.env
-    links:
-      - influxdb
-    ports:
-      - '127.0.0.1:3030:3030'
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning/:/etc/grafana/provisioning/
-      - ./grafana/dashboards/:/var/lib/grafana/dashboards/
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - cache_volume:/var/cache/nginx
 
 volumes:
   mongodata: {}
-  grafana_data: {}
-  influxdb_data: {}
+  cache_volume: {}
 
